@@ -39,6 +39,19 @@ class BaseModel
 
     /**
      * Define the relationships between table fields and other objects to allow for autoloading
+     * an array of links defined as below
+     *    link => array(relationship, class, id_field)
+     *    OR
+     *    link => function ($this) { return $object }
+     *
+     * <code>
+     * array(
+     *       'teacher' => array(self::HAS_ONE, 'Teacher', 'classroom_id'),
+     *       'students' => array(self::HAS_MANY, 'Student', 'classroom_id'),
+     *       'school' => array(self::BELONGS_TO, 'School', 'school_id'),
+     *       'parents' => function ($classroom) { $p = new Parent; $p->getWithWhere('SELECT * FROM parent ORDER BY rand()'); return $p; },
+     *   );     
+     * </code>
      * @var array
      */
     protected $relationships = array();
@@ -377,19 +390,23 @@ class BaseModel
             return $this->_related[$property];
         }
         if (isset($this->relationships[$property])) {
-            list($relation, $class, $field) = $this->relationships[$property];
-            switch($relation) {
-                case self::BELONGS_TO:
-                    $this->_related[$property] = new $class($this->$field);
-                    break;
-                case self::HAS_MANY:
-                    $tmp = new $class;                    
-                    $this->_related[$property] = $tmp->getAll($field.'=?', array($this->id));
-                    break;
-                case self::HAS_ONE:
-                    $tmp = new $class;
-                    $this->_related[$property] = $tmp->getWithWhere($field.'=?', array($this->id));
-                    break;                
+            if (is_callable($this->relationships[$property])) {
+                $this->_related[$property] = $this->relationships[$property]($this);
+            } else {
+                list($relation, $class, $field) = $this->relationships[$property];
+                switch($relation) {
+                    case self::BELONGS_TO:
+                        $this->_related[$property] = new $class($this->$field);
+                        break;
+                    case self::HAS_MANY:
+                        $tmp = new $class;                    
+                        $this->_related[$property] = $tmp->getAll($field.'=?', array($this->id));
+                        break;
+                    case self::HAS_ONE:
+                        $tmp = new $class;
+                        $this->_related[$property] = $tmp->getWithWhere($field.'=?', array($this->id));
+                        break;                
+                }
             }
             return isset($this->_related[$property]) ? $this->_related[$property] : null;
         }
@@ -454,7 +471,7 @@ class BaseModel
                     
                     foreach($this->relationships as $prop => $r) {
                         if (!isset($this->_related[$prop])) {
-                            $h .= '<tr><td style="font-weight: bold;" valign="top">'.htmlspecialchars($prop).'</td><td>'. ($r[1]).'</td></tr>';
+                            $h .= '<tr><td style="font-weight: bold;" valign="top">'.htmlspecialchars($prop).'</td><td>'. (is_callable($r) ? 'Unknown Function' : $r[1]).'</td></tr>';
                         }
                     }
                 }
