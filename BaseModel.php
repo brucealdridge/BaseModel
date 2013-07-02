@@ -238,16 +238,14 @@ class BaseModel
 
     /**
      * function to be run prior to loading data
-     * NB: requried to be public due to getAll
      */
-    public function _preload() {
+    protected function _preload() {
     }
     /**
      * function to be run prior to loading data
-     * NB: requried to be public due to getAll
      * @param boolean $result result of the load
      */    
-    public function _postload($result) {
+    protected function _postload($result) {
     }
 
     /**
